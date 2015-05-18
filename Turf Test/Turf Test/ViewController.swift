@@ -75,8 +75,6 @@ class ViewController: UIViewController, MGLMapViewDelegate {
     }
 
     func updateShops() {
-        map.removeAnnotations(map.annotations)
-
         var coordinates = JSValue(newArrayInContext: js)
         coordinates.setObject(map.centerCoordinate.longitude, atIndexedSubscript: 0)
         coordinates.setObject(map.centerCoordinate.latitude,  atIndexedSubscript: 1)
@@ -88,14 +86,41 @@ class ViewController: UIViewController, MGLMapViewDelegate {
 
         js.evaluateScript("var within = turf.featurecollection(starbucks.features.filter(function(shop){if (turf.distance(shop, point, 'kilometers') <= radius / 1000) return true;}))")
 
+        let currentAnnotations: [Annotation] = { [unowned self] in
+            if self.map.annotations != nil {
+                return self.map.annotations as! [Annotation]
+            }
+            return []
+            }()
+
+        var annotationsToKeep = [Annotation]()
+        var annotationsToAdd = [Annotation]()
+
         for i in 0..<js.evaluateScript("within.features.length").toInt32() {
             js.setObject(NSNumber(int: i), forKeyedSubscript: "i")
             let shop = js.evaluateScript("within.features[i]")
-            let lon = shop.objectForKeyedSubscript("geometry").objectForKeyedSubscript("coordinates").objectAtIndexedSubscript(0).toDouble()
-            let lat = shop.objectForKeyedSubscript("geometry").objectForKeyedSubscript("coordinates").objectAtIndexedSubscript(1).toDouble()
-            let title = shop.objectForKeyedSubscript("properties").objectForKeyedSubscript("street").toString()
-            map.addAnnotation(Annotation(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), title: title))
+            let id = shop.objectForKeyedSubscript("properties").objectForKeyedSubscript("phone").toString()
+
+            let annotation = currentAnnotations.filter({ ($0.id as! String) == id }).first
+
+            if (annotation != nil) {
+                annotationsToKeep.append(annotation!)
+            } else {
+                let lon = shop.objectForKeyedSubscript("geometry").objectForKeyedSubscript("coordinates").objectAtIndexedSubscript(0).toDouble()
+                let lat = shop.objectForKeyedSubscript("geometry").objectForKeyedSubscript("coordinates").objectAtIndexedSubscript(1).toDouble()
+                let title = shop.objectForKeyedSubscript("properties").objectForKeyedSubscript("street").toString()
+                var newAnnotation = Annotation(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                    title: title)
+                newAnnotation.id = id
+                annotationsToAdd.append(newAnnotation)
+            }
         }
+
+        if currentAnnotations.count > 0 {
+            map.removeAnnotations(currentAnnotations.filter({ find(annotationsToKeep, $0) == nil }))
+        }
+
+        map.addAnnotations(annotationsToAdd)
     }
 
     func mapView(mapView: MGLMapView!, regionDidChangeAnimated animated: Bool) {
