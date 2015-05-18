@@ -66,6 +66,7 @@ class ViewController: UIViewController, MGLMapViewDelegate {
 
     func updateRadius() {
         let metersPerPixel = map.metersPerPixelAtLatitude(map.centerCoordinate.latitude)
+
         overlay.bounds = CGRect(x: 0, y: 0, width: Double(slider.value) * 2 / metersPerPixel,
             height: Double(slider.value) * 2 / metersPerPixel)
         overlay.layer.cornerRadius = overlay.bounds.size.width / 2
@@ -98,7 +99,7 @@ class ViewController: UIViewController, MGLMapViewDelegate {
     }
 
     func mapView(mapView: MGLMapView!, regionDidChangeAnimated animated: Bool) {
-        updateShops()
+        updateRadius()
     }
 
     func mapView(mapView: MGLMapView!, annotationCanShowCallout annotation: MGLAnnotation!) -> Bool {
